@@ -28,6 +28,7 @@ export \
 
 
 # Load DAGs exemples (default: Yes)
+AIRFLOW__CORE__LOAD_EXAMPLES=True
 if [[ -z "$AIRFLOW__CORE__LOAD_EXAMPLES" && "${LOAD_EX:=n}" == n ]]
 then
   AIRFLOW__CORE__LOAD_EXAMPLES=False
@@ -35,7 +36,7 @@ fi
 
 # Install custom python package if requirements.txt is present
 if [ -e "/requirements.txt" ]; then
-    $(command -v pip) install --user -r /requirements.txt
+    $(command -v pip) install --user -r /requirements.txt -i  http://mirrors.aliyun.com/pypi/simple
 fi
 
 if [ -n "$REDIS_PASSWORD" ]; then
@@ -69,29 +70,21 @@ if [ "$AIRFLOW__CORE__EXECUTOR" = "CeleryExecutor" ]; then
   wait_for_port "Redis" "$REDIS_HOST" "$REDIS_PORT"
 fi
 
-case "$1" in
-  webserver)
-    airflow initdb
-    if [ "$AIRFLOW__CORE__EXECUTOR" = "LocalExecutor" ] || [ "$AIRFLOW__CORE__EXECUTOR" = "SequentialExecutor" ]; then
-      # With the "Local" and "Sequential" executors it should all run in one container.
-      airflow scheduler &
-    fi
-    exec airflow webserver
-    ;;
-  worker|scheduler)
-    # To give the webserver time to run initdb.
-    sleep 10
-    exec airflow "$@"
-    ;;
-  flower)
-    sleep 10
-    exec airflow "$@"
-    ;;
-  version)
-    exec airflow "$@"
-    ;;
-  *)
-    # The command is something like bash, not an airflow subcommand. Just run it in the right environment.
-    exec "$@"
-    ;;
-esac
+# 将环境变量写入profile
+filename="/etc/profile.d/airflow.sh"
+cat>"${filename}"<<EOF
+export AIRFLOW_HOME=$AIRFLOW_HOME \
+export AIRFLOW__CELERY__BROKER_URL=$AIRFLOW__CELERY__BROKER_URL \
+export AIRFLOW__CELERY__RESULT_BACKEND=$AIRFLOW__CELERY__RESULT_BACKEND \
+  export AIRFLOW__CORE__EXECUTOR=$AIRFLOW__CORE__EXECUTOR \
+  export AIRFLOW__CORE__FERNET_KEY=$AIRFLOW__CORE__FERNET_KEY \
+  export AIRFLOW__CORE__LOAD_EXAMPLES=$AIRFLOW__CORE__LOAD_EXAMPLES \
+  export AIRFLOW__CORE__SQL_ALCHEMY_CONN=$AIRFLOW__CORE__SQL_ALCHEMY_CONN
+export JAVA_HOME=/data/opt/jdk1.8.0_221
+export HADOOP_HOME=/data/opt/hadoop-2.7.7
+export HIVE_HOME=/data/opt/apache-hive-1.1.0-bin
+export PATH="${JAVA_HOME}/bin:${HADOOP_HOME}/bin:${HIVE_HOME}/bin:${PATH}"
+EOF
+
+cat /data/opt/hosts >> /etc/hosts
+su - airflow -c "/bin/bash /airflow_manage.sh $1"

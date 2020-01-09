@@ -47,7 +47,7 @@ hostname_callable = socket:getfqdn
 
 # Default timezone in case supplied date times are naive
 # can be utc (default), system, or any IANA timezone string (e.g. Europe/Amsterdam)
-default_timezone = Asia/Shanghai
+default_timezone = utc
 
 # The executor class that airflow should use. Choices include
 # SequentialExecutor, LocalExecutor, CeleryExecutor, DaskExecutor
@@ -181,7 +181,6 @@ endpoint_url = http://localhost:8080
 [api]
 # How to authenticate users of the API
 auth_backend = airflow.api.auth.backend.default
-#auth_backend = airflow.contrib.auth.backends.ldap_auth
 
 [lineage]
 # what lineage backend to use
@@ -206,7 +205,6 @@ default_gpus = 0
 [hive]
 # Default mapreduce queue for HiveOperator tasks
 default_hive_mapred_queue =
-mapred_job_name_template = Airflow HiveOperator task for {{hostname}}.{{dag_id}}.{{task_id}}.{{execution_date}}
 
 [webserver]
 # The base url of your website as airflow cannot guess what domain or
@@ -262,7 +260,6 @@ expose_config = True
 # Set to true to turn on authentication:
 # https://airflow.apache.org/security.html#web-authentication
 authenticate = False
-auth_backend = airflow.contrib.auth.backends.ldap_auth
 
 # Filter the list of dags by owner name (requires authentication to be enabled)
 filter_by_owner = False
@@ -325,14 +322,14 @@ email_backend = airflow.utils.email.send_email_smtp
 # If you want airflow to send emails on retries, failure, and you want to use
 # the airflow.utils.email.send_email_smtp function, you have to configure an
 # smtp server here
-smtp_host = 
-smtp_starttls = 
-smtp_ssl = 
+smtp_host = localhost
+smtp_starttls = True
+smtp_ssl = False
 # Uncomment and set the user/pass settings if you want to use SMTP AUTH
-smtp_user =
-smtp_password = 
-smtp_port = 
-smtp_mail_from = 
+# smtp_user = airflow
+# smtp_password = airflow
+smtp_port = 25
+smtp_mail_from = airflow@example.com
 
 [celery]
 # This section only applies if you are using the CeleryExecutor in
@@ -485,7 +482,7 @@ scheduler_zombie_task_threshold = 300
 # will not do scheduler catchup if this is False,
 # however it can be set on a per DAG basis in the
 # DAG definition (catchup)
-catchup_by_default = False
+catchup_by_default = True
 
 # This changes the batch size of queries in the scheduling main loop.
 # If this is too high, SQL query performance may be impacted by one
@@ -517,17 +514,17 @@ use_job_schedule = True
 
 [ldap]
 # set this to ldaps://<your.ldap.server>:<port>
-uri = ldap://192.168.58.51:389
-user_filter = objectClass=inetOrgPerson
-user_name_attr = sn
+uri =
+user_filter = objectClass=*
+user_name_attr = uid
 group_member_attr = memberOf
-superuser_filter = memberOf=cn=g-admin,ou=group,dc=ryanmiao,dc=com
-data_profiler_filter = memberOf=cn=g-users,ou=group,dc=ryanmiao,dc=com
-bind_user = cn=admin,dc=ryanmiao,dc=com
-bind_password = admin
-basedn = dc=ryanmiao,dc=com
-cacert = 
-search_scope = SUBTREE
+superuser_filter =
+data_profiler_filter =
+bind_user = cn=Manager,dc=example,dc=com
+bind_password = insecure
+basedn = dc=example,dc=com
+cacert = /etc/ca/ldap_ca.crt
+search_scope = LEVEL
 
 # This setting allows the use of LDAP servers that either return a
 # broken schema, or do not return a schema.
@@ -564,7 +561,7 @@ checkpoint = False
 
 # Enable framework authentication for mesos
 # See http://mesos.apache.org/documentation/latest/configuration/
-authenticate = True
+authenticate = False
 
 # Mesos credentials, if authentication is enabled
 # default_principal = admin
