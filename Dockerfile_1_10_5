@@ -1,11 +1,11 @@
 # VERSION 1.10.5
-# AUTHOR: Wachoo
+# AUTHOR: Ryan Miao
 # DESCRIPTION: Basic Airflow container
 # BUILD: docker build --rm -t puckel/docker-airflow .
 # SOURCE: https://github.com/puckel/docker-airflow
 
 FROM python:3.7-slim-stretch
-LABEL maintainer="wachoo"
+LABEL maintainer="Ryan Miao"
 
 # Never prompts the user for choices on installation/configuration of packages
 ENV DEBIAN_FRONTEND noninteractive
