@@ -1,0 +1,139 @@
+version: '3.2'
+
+networks:
+  hx_redis_net:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 11.11.11.21/26
+
+services:
+  redis:
+    image: redis:5.0.5
+    container_name: dockerairflow_redis-master
+    restart: always
+    command: redis-server --port 6379 --requirepass test@dbuser2020  --appendonly yes
+    ports:
+      - 6379:6379
+    volumes:
+      - ./data:/data
+    networks:
+      hx_redis_net:
+        ipv4_address: 11.11.11.21
+
+  slave1:
+    image: redis:5.0.5
+    container_name: dockerairflow_redis-slave-1
+    restart: always
+    command: redis-server --slaveof 11.11.11.21 6379 --port 6380  --requirepass test@dbuser2020 --masterauth test@dbuser2020  --appendonly yes
+    ports:
+      - 6380:6380
+    volumes:
+      - ./data:/data
+    networks:
+      hx_redis_net:
+        ipv4_address: 11.11.11.22
+
+  slave2:
+    image: redis:5.0.5
+    container_name: dockerairflow_redis-slave-2
+    restart: always
+    command: redis-server --slaveof 11.11.11.21 6379 --port 6381  --requirepass test@dbuser2020 --masterauth test@dbuser2020  --appendonly yes
+    ports:
+      - 6381:6381
+    volumes:
+      - ./data:/data
+    networks:
+      hx_redis_net:
+        ipv4_address: 11.11.11.23
+
+  postgres:
+    image: postgres:9.6
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    # Uncomment these lines to persist data on the local filesystem.
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data/pgdata
+
+  webserver:
+    image:  registry.cn-beijing.aliyuncs.com/docker_wachoo_1/airflow:latest
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    environment:
+    - LOAD_EX=n
+    - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+    - EXECUTOR=Celery
+    # - POSTGRES_USER=airflow
+    # - POSTGRES_PASSWORD=airflow
+    # - POSTGRES_DB=airflow
+    - REDIS_HOST=192.168.22.149
+    - REDIS_PASSWORD=test@dbuser2020
+    volumes:
+    - ./dags:/usr/local/airflow/dags
+    # Uncomment to include custom plugins
+    # - ./plugins:/usr/local/airflow/plugins
+    ports:
+    - "8080:8080"
+    command: webserver
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  flower:
+    image:  registry.cn-beijing.aliyuncs.com/docker_wachoo_1/airflow:latest
+    restart: always
+    depends_on:
+    - redis
+    environment:
+    - EXECUTOR=Celery
+    - REDIS_HOST=192.168.22.149
+    - REDIS_PASSWORD=test@dbuser2020
+    ports:
+    - "5555:5555"
+    command: flower
+
+  scheduler:
+    image:  registry.cn-beijing.aliyuncs.com/docker_wachoo_1/airflow:latest
+    restart: always
+    depends_on:
+    - webserver
+    volumes:
+    - ./dags:/usr/local/airflow/dags
+    # Uncomment to include custom plugins
+    # - ./plugins:/usr/local/airflow/plugins
+    environment:
+    - LOAD_EX=n
+    - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+    - EXECUTOR=Celery
+    # - POSTGRES_USER=airflow
+    # - POSTGRES_PASSWORD=airflow
+    # - POSTGRES_DB=airflow
+    - REDIS_HOST=192.168.22.149
+    - REDIS_PASSWORD=test@dbuser2020
+    command: scheduler
+
+  worker:
+    image:  registry.cn-beijing.aliyuncs.com/docker_wachoo_1/airflow:latest
+    restart: always
+    depends_on:
+    - scheduler
+    volumes:
+    - ./dags:/usr/local/airflow/dags
+    # Uncomment to include custom plugins
+    # - ./plugins:/usr/local/airflow/plugins
+    environment:
+    - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+    - EXECUTOR=Celery
+    # - POSTGRES_USER=airflow
+    # - POSTGRES_PASSWORD=airflow
+    # - POSTGRES_DB=airflow
+    - REDIS_HOST=192.168.22.149
+    - REDIS_PASSWORD=test@dbuser2020
+    command: worker

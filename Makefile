@@ -14,7 +14,9 @@ tag-latest:
 	docker tag ${IMAGE_NAME}:${IMAGE_VERSION} ${IMAGE_NAME}:latest
 
 start-celeryExecutor:
-	docker-compose -f docker-compose-CeleryExecutor.yml up -d
+	docker ps |grep 'dockerairflow'|awk '{print $1}'|xargs docker rm -f
+#	docker-compose -f docker-compose-CeleryExecutor-local-149.yml up -d
+	docker-compose -f docker-compose-CeleryExecutor-redis-slave.yml up -d
 
 start:
 	docker run --rm -it --name ${CONTAINER_NAMES} -v `pwd`/plugins\:/usr/local/airflow/plugins  -v `pwd`/config/airflow.cfg\:/usr/local/airflow/airflow.cfg -v `pwd`/opt\:/data/opt  -v `pwd`/dags\:/usr/local/airflow/dags   ${IMAGE_NAME}:${IMAGE_VERSION} /bin/bash
